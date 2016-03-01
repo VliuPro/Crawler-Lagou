@@ -1,12 +1,12 @@
 # coding: utf-8
 
-import threading
-import requests
-import time
 import random
+import threading
+import time
 from Queue import Queue
-from bs4 import BeautifulSoup
 
+import requests
+from bs4 import BeautifulSoup
 
 thread_local = threading.local()
 
