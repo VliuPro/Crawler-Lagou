@@ -25,11 +25,8 @@ class LG:
         page = self.__getPage()
         bs = BeautifulSoup(page.content, 'lxml')
         for s in bs.find_all('div', 'menu_sub'):
-            for i in s.find_all('dl'):
-                for st in i.dd.strings:
-                    if st == '\n':
-                        continue
-                    self.position.append(st)
+            for i in s.select('dl dd a'):
+                self.position.append(i.string)
 
         print('职业列表获取成功')
 
