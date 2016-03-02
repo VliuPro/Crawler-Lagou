@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 
 thread_local = threading.local()
 
+
 class LG:
     def __init__(self, threadNum):
         self.headers = {
@@ -21,14 +22,18 @@ class LG:
         self.threadNum = threadNum
         """数据库"""
 
-    def getPosition(self):
+    def __getPosition(self):
         page = self.__getPage()
+        if page is None:
+            return None
         bs = BeautifulSoup(page.content, 'lxml')
         for s in bs.find_all('div', 'menu_sub'):
             for i in s.select('dl dd a'):
                 self.position.append(i.string)
-
-        print('职业列表获取成功')
+        if not len(self.position):
+            print('职业列表获取完成')
+        else:
+            return self.position
 
     def __getPage(self):
         time.sleep(random.randint(0, 5))
@@ -38,8 +43,31 @@ class LG:
             print('connect failed ...')
             return None
 
+    def __getJobsList(self, kd):
+        data = {'kd': kd,
+                'pn': 1,
+                'px': 'new'}
+        jsonData = requests.post('http://www.lagou.com/jobs/positionAjax.json?',
+                                 data=data,
+                                 headers=self.headers)
+        print(str(kd) + u' 职位总数目： ' + str(jsonData.json()['content']['totalCount']))
+        # 获取该关键字的职位数目
+        totalCount = jsonData.json()['content']['totalCount']
+        # 获取第一页职位数据
+        jobs = jsonData.json()['content']['result']
+        if not len(jobs):
+            return None
+        else:
+            # 实例化成Job来存入数据库
+            for job in jobs:
+                pass
+
     def work(self):
-        pass
+        while True:
+            kd = self.pos_que.get()
+            self.__getJobsList(kd)
+            time.sleep(1)
+            self.pos_que.task_done()
 
     def workThread(self):
         thread_local.db = ''
@@ -47,8 +75,11 @@ class LG:
 
     def run(self):
         print('获取职业列表 ...')
-        self.__getPosition()
+        if self.__getPosition() is None:
+            print('职业列表获取失败 ...')
+            return None
         for p in self.position:
+            print(p)
             self.pos_que.put(p)
 
         print('Parent process start ...')
@@ -60,9 +91,6 @@ class LG:
 
 
 if __name__ == '__main__':
-    lg = LG(1)
-    lg.getPosition()
-    print(len(lg.position))
-    for i in range(len(lg.position)):
-        print(lg.position[i])
+    lg = LG(10)
+    lg.run()
 
