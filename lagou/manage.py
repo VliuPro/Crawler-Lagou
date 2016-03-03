@@ -60,20 +60,20 @@ class LG:
         jsonData = self.__getPosAjax(kd, pn)
         # 获取该关键字的职位数目
         totalCount = jsonData['content']['totalCount']
-        print(kd.decode('utf-8') + u' 职位总数目： ' + str(totalCount))
+        print(u'{kd} 职位总数目： {total}'.format(kd=kd, total=totalCount))
 
         # 如果总页数大于1，则循环请求 totalCount-pn 次 数据并存入数据库
         if totalCount >= pn:
             for i in range(pn, totalCount + 1):
-                print(u'开始获取' + kd.decode('utf-8', 'ignore') + u' 的数据-----pn = ' + str(i))
+                print(u'开始获取 {kd} 的数据-----pn = {pn}'.format(kd=kd, pn=i))
                 jsonData = self.__getPosAjax(kd, i)
-                print(u'获取' + kd.decode('utf-8', 'ignore') + u' 的数据成功-----pn = ' + str(i))
+                print(u'获取 {kd} 的数据成功-----pn = {pn}'.format(kd=kd, pn=i))
                 jobs = jsonData['content']['result']
                 if not len(jobs):
                     break
-                print(u'开始存入 ' + kd.decode('utf-8', 'ignore') + u' 的数据 pn=' + str(i))
+                print(u'开始存入 {kd} 的数据 pn= {pn}'.format(kd=kd, pn=i))
                 self.savePositionsInfo(jobs)
-                print(u'存入 ' + kd.decode('utf-8', 'ignore') + u' 的数据成功 pn=' + str(i))
+                print(u'存入 {kd} 的数据成功 pn= {pn}'.format(kd=kd, pn=i))
         else:
             return None
 
@@ -81,11 +81,11 @@ class LG:
         while True:
             if not self.pos_que.empty():
                 kd = self.pos_que.get()
-                print(u'开始获取关键字： ' + kd.decode('utf-8', 'ignore') + u" 的招聘信息")
+                print(u'开始获取关键字： {kd} 的招聘信息'.format(kd=kd))
                 self.__getJobsList(kd=kd)
                 time.sleep(1)
                 self.pos_que.task_done()
-                print(u'获取关键字： ' + kd.decode('utf-8', 'ignore') + u" -- 完成")
+                print(u'获取关键字： {kd} -- 完成'.format(kd=kd))
             else:
                 break
 
@@ -106,6 +106,7 @@ class LG:
 
 
 if __name__ == '__main__':
-    start = LG(10)
-    start.run()
+    positions = LG(10).getPositions()
+    for kd in positions:
+        print(u'存入 {kd} 的数据成功'.format(kd=kd))
 
