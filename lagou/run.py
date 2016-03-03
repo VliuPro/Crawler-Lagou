@@ -1,8 +1,8 @@
 # coding: utf-8
 
-from LG import LG
+from LG import *
 
 
 def run(threadNum):
-    lagou = LG(threadNum)
-    lagou.run()
+    start = Down(threadNum)
+    start.run()

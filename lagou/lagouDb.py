@@ -8,7 +8,7 @@ db = Database()
 
 class PositionType(db.Entity):
     _table_ = 'db_type'
-    typeName = Required(str, unique=True)
+    typeName = Optional(str, unique=True)
     # 区别职位类型和总类型 比如： Java， 技术
     typeNo = Required(int)
 
@@ -29,8 +29,8 @@ class Job(db.Entity):
     _table_ = 'db_job'
     positionId = Required(int, size=32, unique=True)
     positionName = Required(str)
-    positionFirstType = Required(str)
-    positionType = Required(str)
+    positionFirstType = Optional(str)
+    positionType = Optional(str)
     positionAdvantage = Required(str)
     salary = Required(str)
     workYear = Required(str)
@@ -47,10 +47,10 @@ class Company(db.Entity):
     companyId = Required(int, size=32, unique=True)
     companyShortName = Required(str)
     companyName = Required(str)
-    companySize = Required(str)
-    companyLogo = Required(str, 80)
-    financeStage = Required(str)
-    industryField = Required(str)
+    companySize = Optional(str)
+    companyLogo = Optional(str, 80)
+    financeStage = Optional(str)
+    industryField = Optional(str)
     companyAdvlist = Set(Advantage)
     jobs = Set(Job)
 
@@ -58,10 +58,14 @@ class Company(db.Entity):
 class DB:
     def __init__(self, host, user, passwd, database):
         self.db = db
-        self.db.bind('mysql', host=host, user=user, passwd=passwd, database=database)
+        self.host = host
+        self.user = user
+        self.passwd = passwd
+        self.database = database
 
     def mappingTables(self):
         # sql_debug(True)    开启后会在控制台输出SQL语句
+        self.db.bind('mysql', host=self.host, user=self.user, passwd=self.passwd, database=self.database)
         self.db.generate_mapping(create_tables=True)
 
     @db_session
@@ -73,8 +77,8 @@ class DB:
         return Company.exists(companyId=companyId)
 
     @db_session
-    def check_positiontype(self, typename, typeno):
-        return PositionType.exists(typeName=typename, typeNo=typeno)
+    def check_positiontype(self, typeName):
+        return PositionType.exists(typeName=typeName)
 
     @db_session
     def check_city(self, name):
