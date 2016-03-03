@@ -83,7 +83,7 @@ class LG:
                 kd = self.pos_que.get()
                 print(u'开始获取关键字： {kd} 的招聘信息'.format(kd=kd))
                 self.__getJobsList(kd=kd)
-                time.sleep(1)
+                time.sleep(4)
                 self.pos_que.task_done()
                 print(u'获取关键字： {kd} -- 完成'.format(kd=kd))
             else:
@@ -100,6 +100,7 @@ class LG:
 
         for i in range(self.num_thread):
             t = threading.Thread(target=self.work_thread())
+            t.setDaemon()
             t.start()
 
         self.pos_que.join()

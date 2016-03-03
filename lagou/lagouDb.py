@@ -30,15 +30,15 @@ class Job(db.Entity):
     positionName = Required(str)
     positionFirstType = Optional(str)
     positionType = Optional(str)
-    positionAdvantage = Required(str)
-    salary = Required(str)
-    workYear = Required(str)
-    education = Required(str)
-    createTime = Required(str)
-    nature = Required(str)
+    positionAdvantage = Optional(str)
+    salary = Optional(str)
+    workYear = Optional(str)
+    education = Optional(str)
+    createTime = Optional(str)
+    nature = Optional(str)
     leader = Optional(str)
-    city = Required(City)
-    company = Required('Company')
+    city = Optional(City)
+    company = Optional('Company')
 
 
 class Company(db.Entity):
@@ -73,23 +73,23 @@ class DB:
 
     @db_session
     def check_job(self, positionId):
-        return Job.exists(positionId=positionId)
+        return Job.exists(positionId=int(positionId))
 
     @db_session
     def check_company(self, companyId):
-        return Company.exists(companyId=companyId)
+        return Company.exists(companyId=int(companyId))
 
     @db_session
     def check_positiontype(self, typeName):
-        return PositionType.exists(typeName=typeName)
+        return typeName != '' and PositionType.exists(typeName=typeName)
 
     @db_session
     def check_city(self, name):
-        return City.exists(name=name)
+        return name != '' and City.exists(name=name)
 
     @db_session
     def check_advantage(clselfs, name):
-        return Advantage.exists(name=name)
+        return name != '' and Advantage.exists(name=name)
 
 global count
 count = 0
@@ -104,18 +104,23 @@ class DbTools():
     def save(self):
         for position in self.positions:
             # with db_session:
+
             if not self.db.check_city(name=position['city']):
                 city = City(name=position['city'])
+                commit()
 
             if not self.db.check_positiontype(typeName=position['positionFirstType']):
                 positionFirstType = PositionType(typeName=position['positionFirstType'], typeNo=0)
+                commit()
 
             if not self.db.check_positiontype(typeName=position['positionType']):
                 positiontype = PositionType(typeName=position['positionType'], typeNo=1)
+                commit()
 
             for l in position['companyLabelList']:
                 if not self.db.check_advantage(name=l):
                     advantage = Advantage(name=l)
+                    commit()
 
             if not self.db.check_company(companyId=position['companyId']):
                 com = {
@@ -128,11 +133,13 @@ class DbTools():
                     'industryField': position['industryField']
                 }
                 company = Company(**com)
+                commit()
                 ads = []
                 for l in position['companyLabelList']:
                     Advantage.get(name=l).companys = company
                     ads.append(Advantage.get(name=l))
                 company.companyAdvlist = ads
+                commit()
 
             if not self.db.check_job(positionId=position['positionId']):
                 pt = {
@@ -146,12 +153,16 @@ class DbTools():
                     'education': position['education'],
                     'createTime': position['createTime'],
                     'nature': position['jobNature'],
-                    'leader': position['leaderName'],
-                    'city': City.get(name=position['city']),
-                    'company': Company.get(companyId=position['companyId'])
+                    'leader': position['leaderName']
                 }
+                # sql_debug(True)
                 job = Job(**pt)
+                job.city = City.get(name=position['city'])
+                job.company = Company.get(companyId=position['companyId'])
+                commit()
+                # sql_debug(False)
                 Company.get(companyId=position['companyId']).jobs = job
+                commit()
             global count
             count += 1
         print(u'职位总数为： ' + str(count))
