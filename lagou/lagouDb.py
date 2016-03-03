@@ -5,7 +5,6 @@ from pony.orm import *
 db = Database()
 
 
-
 class PositionType(db.Entity):
     _table_ = 'db_type'
     typeName = Optional(str, unique=True)
@@ -62,11 +61,15 @@ class DB:
         self.user = user
         self.passwd = passwd
         self.database = database
-
-    def mappingTables(self):
-        # sql_debug(True)    开启后会在控制台输出SQL语句
         self.db.bind('mysql', host=self.host, user=self.user, passwd=self.passwd, database=self.database)
         self.db.generate_mapping(create_tables=True)
+
+    # @classmethod
+    # def mappingTables(cls, host, user, passwd, database):
+    #     db.bind('mysql', host=host, user=user, passwd=passwd, database=database)
+    #     # sql_debug(True)    开启后会在控制台输出SQL语句
+    #     db.generate_mapping(create_tables=True)
+    #     return db
 
     @db_session
     def check_job(self, positionId):
@@ -85,23 +88,70 @@ class DB:
         return City.exists(name=name)
 
     @db_session
-    def check_advantage(self, name):
+    def check_advantage(clselfs, name):
         return Advantage.exists(name=name)
 
+global count
+count = 0
 
-if __name__ == '__main__':
-    mdb = DB(host='127.0.0.1', user='vliupro', passwd='liujida', database='ponytest')
-    # sql_debug(True)
-    mdb.mappingTables()
-    # with db_session:
-    #     com = {
-    #         'companyId': int('11356'),
-    #         'companyShortName': u'花花',
-    #         'companyName': u'花花有限公司',
-    #         'companySize': u'12-20人',
-    #         'companyLogo': u'sasasasasasasasas',
-    #         'financeStage': u'Ｃ轮',
-    #         'industryField': u'大数据'
-    #     }
-    #     company = Company(**com)
-    print(mdb.check_city('hahaha'))
+
+class DbTools():
+    def __init__(self, positions, dbs):
+        self.positions = positions
+        self.db = dbs
+
+    @db_session
+    def save(self):
+        for position in self.positions:
+            # with db_session:
+            if not self.db.check_city(name=position['city']):
+                city = City(name=position['city'])
+
+            if not self.db.check_positiontype(typeName=position['positionFirstType']):
+                positionFirstType = PositionType(typeName=position['positionFirstType'], typeNo=0)
+
+            if not self.db.check_positiontype(typeName=position['positionType']):
+                positiontype = PositionType(typeName=position['positionType'], typeNo=1)
+
+            for l in position['companyLabelList']:
+                if not self.db.check_advantage(name=l):
+                    advantage = Advantage(name=l)
+
+            if not self.db.check_company(companyId=position['companyId']):
+                com = {
+                    'companyId': int(position['companyId']),
+                    'companyShortName': position['companyName'],
+                    'companyName': position['companyShortName'],
+                    'companySize': position['companySize'],
+                    'companyLogo': position['companyLogo'],
+                    'financeStage': position['financeStage'],
+                    'industryField': position['industryField']
+                }
+                company = Company(**com)
+                ads = []
+                for l in position['companyLabelList']:
+                    Advantage.get(name=l).companys = company
+                    ads.append(Advantage.get(name=l))
+                company.companyAdvlist = ads
+
+            if not self.db.check_job(positionId=position['positionId']):
+                pt = {
+                    'positionId': position['positionId'],
+                    'positionName': position['positionName'],
+                    'positionFirstType': position['positionFirstType'],
+                    'positionType': position['positionType'],
+                    'positionAdvantage': position['positionAdvantage'],
+                    'salary': position['salary'],
+                    'workYear': position['workYear'],
+                    'education': position['education'],
+                    'createTime': position['createTime'],
+                    'nature': position['jobNature'],
+                    'leader': position['leaderName'],
+                    'city': City.get(name=position['city']),
+                    'company': Company.get(companyId=position['companyId'])
+                }
+                job = Job(**pt)
+                Company.get(companyId=position['companyId']).jobs = job
+            global count
+            count += 1
+        print(u'职位总数为： ' + str(count))
