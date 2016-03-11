@@ -4,5 +4,8 @@ from manage import LG
 
 
 def run():
-    start = LG(10)
+    threadNum = input('请输入创建线程数： ')
+    start = LG(threadNum)
     start.run()
+
+run()

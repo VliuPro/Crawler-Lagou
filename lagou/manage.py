@@ -2,7 +2,7 @@
 
 import time
 import threading
-from Queue import Queue
+from queue import Queue
 
 import requests
 from bs4 import BeautifulSoup

@@ -96,7 +96,7 @@ class DbTools():
                 if len(position['companyLabelList']) == 0:
                     ads = ''
                 else:
-                    ads = ','.join([i for i in position['companyLabelList'])
+                    ads = ','.join([i for i in position['companyLabelList']])
                 com = {
                     'companyId': int(position['companyId']),
                     'companyShortName': position['companyName'],
