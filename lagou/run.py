@@ -1,8 +1,8 @@
 # coding: utf-8
 
-from manage import *
+from manage import LG
 
 
-def run(threadNum):
-    start = LG(threadNum)
+def run():
+    start = LG(10)
     start.run()
