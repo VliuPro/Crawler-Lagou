@@ -8,36 +8,34 @@ db = Database()
 class PositionType(db.Entity):
     _table_ = 'db_type'
     typeName = Required(str, unique=True)
-    # 区别职位类型和总类型 比如： Java， 技术
-    typeNo = Required(int)
 
 
 class City(db.Entity):
     _table_ = 'db_city'
     name = Required(str, unique=True)
-    job = Set('Job')
+    # job = Set('Job')
 
 
 class Job(db.Entity):
     _table_ = 'db_job'
-    positionId = Required(int, size=32, unique=True)
+    positionId = Required(str, unique=True)
     positionName = Required(str)
     positionFirstType = Optional(str)
     positionType = Optional(str)
     positionAdvantage = Optional(str)
-    salary = Optional(str)
+    salary = Required(str)
     workYear = Optional(str)
     education = Optional(str)
     createTime = Optional(str)
     nature = Optional(str)
     leader = Optional(str)
-    city = Required(City)
-    company = Required('Company')
+    city = Optional(str)
+    company = Optional('Company')
 
 
 class Company(db.Entity):
     _table_ = 'db_company'
-    companyId = Required(int, size=32, unique=True)
+    companyId = Required(str, unique=True)
     companyShortName = Required(str)
     companyName = Required(str)
     companySize = Optional(str)
@@ -45,7 +43,7 @@ class Company(db.Entity):
     financeStage = Optional(str)
     industryField = Optional(str)
     companyAdvlist = Optional(str)
-    jobs = Set(Job)
+    jobs = Set('Job')
 
 
 class DB:
@@ -59,12 +57,20 @@ class DB:
         self.db.generate_mapping(create_tables=True)
 
     @db_session
+    def check_city(self, city):
+        return City.exists(name=city)
+
+    @db_session
+    def check_type(self, p):
+        return City.exists(name=p)
+
+    @db_session
     def check_job(self, positionId):
-        return Job.exists(positionId=int(positionId))
+        return Job.exists(positionId=positionId)
 
     @db_session
     def check_company(self, companyId):
-        return Company.exists(companyId=int(companyId))
+        return Company.exists(companyId=companyId)
 
 
 class DbTools():
@@ -74,11 +80,13 @@ class DbTools():
     @db_session
     def city_save(self, cities):
         for city in cities:
-            c = City(name=city)
+            if City.get(name=city) == None:
+                c = City(name=city)
 
     @db_session
-    def positiontype_save(self, typename, typeno):
-        ptype = PositionType(typeName=typename, typeNo=typeno)
+    def positiontype_save(self, typename):
+        if PositionType.get(typeName=typename) == None:
+            ptype = PositionType(typeName=typename)
 
     @db_session
     def company_save(self, cp):
@@ -91,29 +99,29 @@ class DbTools():
     @db_session
     def save(self, positions):
         for position in positions:
-            if not self.db.check_company(companyId=position['companyId']):
+            if not self.db.check_company(companyId=str(position['companyId'])):
                 s = ','
                 if len(position['companyLabelList']) == 0:
                     ads = ''
                 else:
                     ads = ','.join([i for i in position['companyLabelList']])
                 com = {
-                    'companyId': int(position['companyId']),
+                    'companyId': str(position['companyId']),
                     'companyShortName': position['companyName'],
                     'companyName': position['companyShortName'],
                     'companySize': position['companySize'],
                     'companyLogo': position['companyLogo'],
                     'financeStage': position['financeStage'],
                     'industryField': position['industryField'],
-                    'companyAdvList': ads
+                    'companyAdvlist': ads
                 }
                 company = self.company_save(com)
             else:
                 pass
 
-            if not self.db.check_job(positionId=position['positionId']):
+            if not self.db.check_job(positionId=str(position['positionId'])):
                 pt = {
-                    'positionId': position['positionId'],
+                    'positionId': str(position['positionId']),
                     'positionName': position['positionName'],
                     'positionFirstType': position['positionFirstType'],
                     'positionType': position['positionType'],
@@ -123,11 +131,21 @@ class DbTools():
                     'education': position['education'],
                     'createTime': position['createTime'],
                     'nature': position['jobNature'],
-                    'leader': position['leaderName']
+                    'leader': position['leaderName'],
+                    'city': position['city']
                 }
                 job = self.position_save(pt)
-                job.city = City.get(name=position['city'])
-                job.company = Company.get(companyId=position['companyId'])
-                Company.get(companyId=position['companyId']).jobs = job
+                # city = City.get(name=position['city'])
+                # if city != None:
+                #     job.city = city
+                # else:
+                #     job.city = position['city']
+
+                company = Company.get(companyId=str(position['companyId']))
+                if company != None:
+                    job.company = company
+                    company.jobs = job
+                else:
+                    job.company = position['companyId']
             else:
                 pass
