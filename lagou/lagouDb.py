@@ -1,6 +1,8 @@
 # coding: utf-8
 
 from pony.orm import *
+from datetime import datetime
+
 
 db = Database()
 
@@ -18,7 +20,7 @@ class City(db.Entity):
 
 class Job(db.Entity):
     _table_ = 'db_job'
-    positionId = Required(str, unique=True)
+    positionId = Required(int, size=32, unique=True)
     positionName = Required(str)
     positionFirstType = Optional(str)
     positionType = Optional(str)
@@ -26,16 +28,16 @@ class Job(db.Entity):
     salary = Required(str)
     workYear = Optional(str)
     education = Optional(str)
-    createTime = Optional(str)
+    createTime = Optional(datetime)
     nature = Optional(str)
     leader = Optional(str)
-    city = Optional(str)
-    company = Optional('Company')
+    city = Required(str)
+    company = Required(int, size=32)
 
 
 class Company(db.Entity):
     _table_ = 'db_company'
-    companyId = Required(str, unique=True)
+    companyId = Required(int, size=32, unique=True)
     companyShortName = Required(str)
     companyName = Required(str)
     companySize = Optional(str)
@@ -43,7 +45,7 @@ class Company(db.Entity):
     financeStage = Optional(str)
     industryField = Optional(str)
     companyAdvlist = Optional(str)
-    jobs = Set('Job')
+    # jobs = Set('Job')
 
 
 class DB:
@@ -62,7 +64,7 @@ class DB:
 
     @db_session
     def check_type(self, p):
-        return City.exists(name=p)
+        return PositionType.exists(name=p)
 
     @db_session
     def check_job(self, positionId):
@@ -78,10 +80,9 @@ class DbTools():
         self.db = dbs
 
     @db_session
-    def city_save(self, cities):
-        for city in cities:
-            if City.get(name=city) == None:
-                c = City(name=city)
+    def city_save(self, city):
+        if City.get(name=city) == None:
+            return City(name=city)
 
     @db_session
     def positiontype_save(self, typename):
@@ -99,53 +100,51 @@ class DbTools():
     @db_session
     def save(self, positions):
         for position in positions:
-            if not self.db.check_company(companyId=str(position['companyId'])):
+            company = Company.get(companyId=int(position['companyId']))
+            if company == None:
                 s = ','
                 if len(position['companyLabelList']) == 0:
                     ads = ''
                 else:
-                    ads = ','.join([i for i in position['companyLabelList']])
+                    ads = ','.join([i.strip() for i in position['companyLabelList']])
                 com = {
-                    'companyId': str(position['companyId']),
-                    'companyShortName': position['companyName'],
-                    'companyName': position['companyShortName'],
-                    'companySize': position['companySize'],
-                    'companyLogo': position['companyLogo'],
-                    'financeStage': position['financeStage'],
-                    'industryField': position['industryField'],
+                    'companyId': int(position['companyId']),
+                    'companyShortName': position['companyName'].strip(),
+                    'companyName': position['companyShortName'].strip(),
+                    'companySize': position['companySize'].strip(),
+                    'companyLogo': position['companyLogo'].strip(),
+                    'financeStage': position['financeStage'].strip(),
+                    'industryField': position['industryField'].strip(),
                     'companyAdvlist': ads
                 }
                 company = self.company_save(com)
             else:
                 pass
 
-            if not self.db.check_job(positionId=str(position['positionId'])):
+            if not self.db.check_job(positionId=int(position['positionId'])):
                 pt = {
-                    'positionId': str(position['positionId']),
-                    'positionName': position['positionName'],
-                    'positionFirstType': position['positionFirstType'],
-                    'positionType': position['positionType'],
-                    'positionAdvantage': position['positionAdvantage'],
-                    'salary': position['salary'],
-                    'workYear': position['workYear'],
-                    'education': position['education'],
-                    'createTime': position['createTime'],
-                    'nature': position['jobNature'],
-                    'leader': position['leaderName'],
-                    'city': position['city']
+                    'positionId': int(position['positionId']),
+                    'positionName': position['positionName'].strip(),
+                    'positionFirstType': position['positionFirstType'].strip(),
+                    'positionType': position['positionType'].strip(),
+                    'positionAdvantage': position['positionAdvantage'].strip(),
+                    'salary': position['salary'].strip(),
+                    'workYear': position['workYear'].strip(),
+                    'education': position['education'].strip(),
+                    'createTime': datetime.strptime(position['createTime'].strip(), '%Y-%m-%d %H:%M:%S'),
+                    'nature': position['jobNature'].strip(),
+                    'leader': position['leaderName'].strip(),
+                    'city': position['city'],
+                    'company': int(position['companyId'])
                 }
                 job = self.position_save(pt)
-                # city = City.get(name=position['city'])
-                # if city != None:
-                #     job.city = city
-                # else:
-                #     job.city = position['city']
 
-                company = Company.get(companyId=str(position['companyId']))
-                if company != None:
-                    job.company = company
-                    company.jobs = job
-                else:
-                    job.company = position['companyId']
+                # City Foreign Key
+                # job.city = city
+                # city.job = job
+
+                # Company Foreign Key
+                # job.company = company
+                # company.jobs = job
             else:
                 pass

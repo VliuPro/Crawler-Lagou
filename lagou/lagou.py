@@ -1,6 +1,8 @@
 # coding: utf-8
 
 import threading
+import time
+import random
 from queue import Queue
 
 import requests
@@ -28,7 +30,7 @@ class Lagou:
         bs = BeautifulSoup(page.content, 'lxml')
         for s in bs.find_all('div', 'menu_sub'):
             for i in s.select('dl dd a'):
-                positions.append(i.string)
+                positions.append(i.string.strip())
         if len(positions):
             print('职业列表获取完成')
             return positions
@@ -44,7 +46,7 @@ class Lagou:
         bs = BeautifulSoup(page.content, 'lxml')
         for s in bs.find_all('div', 'more-positions'):
             for i in s.select('li a'):
-                cities.append(i.string)
+                cities.append(i.string.strip())
         cities.pop(0)
         return cities
 
@@ -84,6 +86,7 @@ class ThreadCrawl(threading.Thread):
             for i in range(1, totalPageCount + 1):
                 jd = self.getJsonData(item, i)
                 self.psqueue.put(jd['content']['result'])
+                time.sleep(round(random.uniform(0.5, 1), 2))
             self.kdqueue.task_done()
 
 
@@ -99,41 +102,40 @@ class ThreadSave(threading.Thread):
             jobs = self.queue.get()
             print('save data , kd = ' + str(jobs[0]['positionType']))
             with lock:
-                dt.save(jobs)
+                self.dt.save(jobs)
             self.queue.task_done()
 
 
 if __name__ == '__main__':
     lg = Lagou()
+    dt = DbTools(db)
     print('get positions list ...')
     plist = lg.getTypes()
-    # for p in plist:
-        # print(p)
-    cities = lg.getCities()
-    dt = DbTools(db)
     if len(plist) != 0:
         for p in plist:
             dt.positiontype_save(p)
             kd_queue.put(p)
+        print('put kd successfully, num = ' + str(len(plist)))
+    cities = lg.getCities()
     if len(cities) != 0:
-        dt.city_save(cities)
+        for city in cities:
+            dt.city_save(city)
+        print('save cities successfully, num = ' + str(len(cities)))
 
     num = 4
     for i in range(num):
         t = ThreadCrawl(kd_queue, ps_queue)
         t.setDaemon(True)
         t.start()
-        s = ThreadSave(ps_queue, lock, dt)
-        s.setDaemon(True)
-        s.start()
 
-    # for i in range(num):
-        # t = ThreadSave(ps_queue, lock, dt)
-        # t.setDaemon(True)
-        # t.start
+    for i in range(num):
+        t = ThreadSave(ps_queue, lock, dt)
+        t.setDaemon(True)
+        t.start()
 
     kd_queue.join()
     ps_queue.join()
+    miss_queue.join()
 
     print('crawl ending ...')
 
