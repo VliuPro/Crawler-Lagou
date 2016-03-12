@@ -171,7 +171,8 @@ class ThreadJobCrawl(threading.Thread):
 
 
 if __name__ == '__main__':
-    num = int(input('please input num of thread: '))
+    # num = int(input('please input num of thread: '))
+    num = 10
     lg = Lagou()
     dt = DbTools(db)
     print('get positions list ...')
