@@ -22,6 +22,7 @@ class Job(db.Entity):
     _table_ = 'db_job'
     positionId = Required(int, size=32, unique=True)
     positionName = Required(str)
+    positionKey = Required(str)
     positionFirstType = Optional(str)
     positionType = Optional(str)
     positionAdvantage = Optional(str)
@@ -33,6 +34,7 @@ class Job(db.Entity):
     leader = Optional(str)
     city = Required(str)
     company = Required(int, size=32)
+    info = Optional('JobInfo')
 
 
 class Company(db.Entity):
@@ -46,6 +48,13 @@ class Company(db.Entity):
     industryField = Optional(str)
     companyAdvlist = Optional(str)
     # jobs = Set('Job')
+
+
+class JobInfo(db.Entity):
+    _table_ = 'db_jobinfo'
+    describe = Optional(LongStr)
+    jobId = Optional(int)
+    job = Optional(Job)
 
 
 class DB:
@@ -98,7 +107,25 @@ class DbTools():
         return Job(**pt)
 
     @db_session
-    def save(self, positions):
+    def info_save(self, jobids, texts):
+        for i in range(len(jobids)):
+            jobid = jobids[i]
+            text = texts[i]
+            job = Job.get(positionId=jobid)
+            if job != None:
+                if text == None:
+                    job.delete()
+                    return None
+                elif text == '' or text == '404':
+                    text = 'none'
+                info = JobInfo(jobId=jobid, describe=text)
+                info.job = job
+                job.info = info
+            else:
+                pass
+
+    @db_session
+    def save(self, kd, positions):
         for position in positions:
             company = Company.get(companyId=int(position['companyId']))
             if company == None:
@@ -125,6 +152,7 @@ class DbTools():
                 pt = {
                     'positionId': int(position['positionId']),
                     'positionName': position['positionName'].strip(),
+                    'positionKey': kd,
                     'positionFirstType': position['positionFirstType'].strip(),
                     'positionType': position['positionType'].strip(),
                     'positionAdvantage': position['positionAdvantage'].strip(),
@@ -139,12 +167,5 @@ class DbTools():
                 }
                 job = self.position_save(pt)
 
-                # City Foreign Key
-                # job.city = city
-                # city.job = job
-
-                # Company Foreign Key
-                # job.company = company
-                # company.jobs = job
             else:
                 pass

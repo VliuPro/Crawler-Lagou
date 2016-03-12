@@ -13,6 +13,7 @@ from lagouDb import DB, DbTools
 
 kd_queue = Queue()
 ps_queue = Queue()
+job_queue = Queue()
 lock = threading.Lock()
 db = DB(host='127.0.0.1', user='vliupro', passwd='liujida', database='ponytest')
 
@@ -85,28 +86,92 @@ class ThreadCrawl(threading.Thread):
             print('get ' + str(item) + ' data , total = ' + str(totalPageCount))
             for i in range(1, totalPageCount + 1):
                 jd = self.getJsonData(item, i)
-                self.psqueue.put(jd['content']['result'])
+                self.psqueue.put((item, jd['content']['result']))
                 time.sleep(round(random.uniform(0.5, 1), 2))
             self.kdqueue.task_done()
 
 
 class ThreadSave(threading.Thread):
+    def __init__(self, queue, job_queue, lock, dt):
+        threading.Thread.__init__(self)
+        self.queue = queue
+        self.job_queue = job_queue
+        self.lock = lock
+        self.dt = dt
+
+    def makeJobIdList(self, jobs):
+        idlist = []
+        for i in range(len(jobs)):
+            idlist.append(jobs[i]['positionId'])
+        self.job_queue.put(idlist)
+
+    def run(self):
+        while True:
+            kd, jobs = self.queue.get()
+            print('put jobId into job_queue..., kd = ' + str(kd))
+            self.makeJobIdList(jobs)
+            print('save data , kd = ' + str(kd))
+            with lock:
+                self.dt.save(kd, jobs)
+            self.queue.task_done()
+
+
+class ThreadJobCrawl(threading.Thread):
     def __init__(self, queue, lock, dt):
         threading.Thread.__init__(self)
         self.queue = queue
         self.lock = lock
         self.dt = dt
+        self.url = 'http://www.lagou.com/jobs/'
+
+    def makeUrl(self, jid):
+        return str(self.url) + str(jid) + '.html'
+
+    def getPageCode(self, url):
+        try:
+            return requests.get(url)
+        except:
+            print('connected failed ...')
+            return None
+
+    def filterPage(self, jobids):
+        texts = []
+        for jobid in jobids:
+            rurl = self.makeUrl(jobid)
+            page = self.getPageCode(rurl)
+            if page != None:
+                bs = BeautifulSoup(page.content, 'lxml')
+                dd = bs.find_all('dd', class_='job_bt')
+                if len(dd) == 0:
+                    text = None
+                else:
+                    dd = dd[0]
+                    for i in range(len(dd.select('p br'))):
+                        dd.select('p br')[0].extract()
+                    for i in range(len(dd.select('p strong'))):
+                        dd.select('p strong')[0].unwrap()
+                    for i in range(len(dd.select('p span'))):
+                        dd.select('p span')[0].unwrap()
+                    text = "__".join([str(i).replace('\xa0', '') for i in dd.strings if i != '\n' and i != '\xa0'])
+            else:
+                text = '404'
+            texts.append(text)
+        return texts
 
     def run(self):
         while True:
-            jobs = self.queue.get()
-            print('save data , kd = ' + str(jobs[0]['positionType']))
-            with lock:
-                self.dt.save(jobs)
-            self.queue.task_done()
+            print('begin deal jobinfo ...')
+            jobids = self.queue.get()
+            texts = self.filterPage(jobids)
+            if texts != None:
+                print('save jobinfo ... ... ...')
+                with lock:
+                    self.dt.info_save(jobids, texts)
+                self.queue.task_done()
 
 
 if __name__ == '__main__':
+    num = int(input('please input num of thread: '))
     lg = Lagou()
     dt = DbTools(db)
     print('get positions list ...')
@@ -122,20 +187,24 @@ if __name__ == '__main__':
             dt.city_save(city)
         print('save cities successfully, num = ' + str(len(cities)))
 
-    num = 4
     for i in range(num):
         t = ThreadCrawl(kd_queue, ps_queue)
         t.setDaemon(True)
         t.start()
 
     for i in range(num):
-        t = ThreadSave(ps_queue, lock, dt)
+        t = ThreadSave(ps_queue, job_queue, lock, dt)
+        t.setDaemon(True)
+        t.start()
+
+    for i in range(num):
+        t = ThreadJobCrawl(job_queue, lock, dt)
         t.setDaemon(True)
         t.start()
 
     kd_queue.join()
     ps_queue.join()
-    miss_queue.join()
+    job_queue.join()
 
     print('crawl ending ...')
 
