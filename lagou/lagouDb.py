@@ -53,7 +53,7 @@ class Company(db.Entity):
 class JobInfo(db.Entity):
     _table_ = 'db_jobinfo'
     describe = Optional(LongStr)
-    jobId = Optional(int)
+    jobId = Optional(int, unique=True)
     job = Optional(Job)
 
 
@@ -82,6 +82,10 @@ class DB:
     @db_session
     def check_company(self, companyId):
         return Company.exists(companyId=companyId)
+
+    @db_session
+    def check_jobinfo(self, jobId):
+        return JobInfo.exists(jobId=jobId)
 
 
 class DbTools():
@@ -112,7 +116,7 @@ class DbTools():
             jobid = jobids[i]
             text = texts[i]
             job = Job.get(positionId=jobid)
-            if job != None:
+            if not self.db.check_jobinfo(jobid) and job != None :
                 if text == None:
                     job.delete()
                     return None
